@@ -17,7 +17,7 @@
 ### 1. Клонирование репозитория
 
 ```bash
-git clone https://github.com/yourusername/pyChainLite.git
+[git clone https://github.com/yourusername/pyChainLite.git](https://github.com/giteed/separator.git)
 cd pyChainLite
 ```
 
