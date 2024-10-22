@@ -4,88 +4,130 @@
 
 import os
 import base64
+import hashlib
+import time
+import math  # Добавляем импорт библиотеки math
 import rich_click as click
 from rich.console import Console
+from rich.progress import Progress
 from rich.table import Table
 
 # Инициализация Rich для красивого вывода
 console = Console(force_terminal=True, color_system="256")
 
-def extract_part_number(filename):
-    """Извлекает номер части из имени файла, чтобы отсортировать по номеру."""
-    part = filename.split('_part_')[-1].split('.txt')[0]
-    return int(part)
+def calculate_md5(file_path):
+    """Вычисление контрольной суммы файла."""
+    md5_hash = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            md5_hash.update(byte_block)
+    return md5_hash.hexdigest()
+
+def format_size(size_bytes):
+    """Форматирует размер файла в человекочитаемый формат."""
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))  # Используем math для вычисления логарифма
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_name[i]}"
 
 def merge_file(parts_dir, output_file, encoding):
     """
-    Восстанавливает исходный файл из его частей и сохраняет в указанный файл.
+    Восстанавливает файл из частей и проверяет контрольную сумму.
 
-    :param parts_dir: Папка, в которой хранятся части файла.
+    :param parts_dir: Папка, содержащая части файла.
     :param output_file: Путь для сохранения восстановленного файла.
-    :param encoding: Метод декодирования частей файла ('hex' или 'base64').
+    :param encoding: Метод декодирования частей файла ('hex', 'base64' или 'base85').
     """
-    # Список всех частей файла с правильной сортировкой по номеру
-    parts = sorted([f for f in os.listdir(parts_dir) if f.endswith('.txt') and '_part_' in f], key=extract_part_number)
-    
+    parts = sorted([f for f in os.listdir(parts_dir) if f.endswith('.txt') and '_part_' in f], key=lambda x: int(x.split('_part_')[-1].split('.')[0]))
+
     if not parts:
-        console.print(f"[red]Ошибка:[/red] В папке '{parts_dir}' не найдены части файла.")
+        console.print(f"[red]Ошибка:[/red] В папке '{parts_dir}' не найдено частей для восстановления.")
         return
 
-    console.print(f"[green]Найдено {len(parts)} частей для восстановления в папке '{parts_dir}'[/green]")
-    
-    try:
-        with open(output_file, 'wb') as output:
-            for part in parts:
-                part_file_path = os.path.join(parts_dir, part)
-                with open(part_file_path, 'r') as part_file:
-                    encoded_chunk = part_file.read()
+    # Прогресс-бар с переносом строки
+    with Progress() as progress:
+        console.print(f"\nВосстановление файла: {output_file} из частей...\n")
+        task = progress.add_task(f"\n", total=len(parts))  # Прогресс-бар без текста, перенос строки
+        start_time = time.time()
 
-                    # Декодируем части в зависимости от выбранной кодировки
-                    if encoding == 'hex':
-                        chunk = bytes.fromhex(encoded_chunk)
-                    elif encoding == 'base64':
-                        chunk = base64.b64decode(encoded_chunk)
-                    else:
-                        console.print(f"[red]Ошибка:[/red] Некорректный тип кодирования '{encoding}'.")
-                        return
+        try:
+            with open(output_file, 'wb') as output:
+                for index, part in enumerate(parts, start=1):
+                    part_path = os.path.join(parts_dir, part)
 
-                    # Записываем декодированные данные в итоговый файл
-                    output.write(chunk)
-                    console.print(f"[cyan]Часть {part} добавлена к '{output_file}'[/cyan]")
+                    with open(part_path, 'r') as part_file:
+                        encoded_data = part_file.read()
 
-        console.print(f"[bold green]Файл '{output_file}' успешно восстановлен из {len(parts)} частей.[/bold green]")
-    
-    except Exception as e:
-        console.print(f"[red]Ошибка при восстановлении файла:[/red] {e}")
+                        if encoding == 'hex':
+                            decoded_data = bytes.fromhex(encoded_data)
+                        elif encoding == 'base64':
+                            decoded_data = base64.b64decode(encoded_data)
+                        elif encoding == 'base85':
+                            decoded_data = base64.b85decode(encoded_data)
+                        else:
+                            console.print(f"[red]Ошибка:[/red] Некорректный тип декодирования '{encoding}'.")
+                            return
+
+                        output.write(decoded_data)
+
+                    progress.update(task, advance=1)
+
+            # Подсчёт размера восстановленного файла
+            restored_file_size = os.path.getsize(output_file)
+
+            # Чтение контрольной суммы из файла
+            checksum_file_path = os.path.join(parts_dir, "checksum.md5")
+            restored_md5 = calculate_md5(output_file)
+
+            if os.path.exists(checksum_file_path):
+                with open(checksum_file_path, 'r') as checksum_file:
+                    original_md5 = checksum_file.read().strip()
+
+                # Проверка совпадения контрольных сумм
+                end_time = time.time()
+                console.print("\n")
+
+                # Отчетная таблица
+                table = Table(title=f"Результат восстановления файла ({encoding})")
+                table.add_column("Параметр", justify="right", style="cyan", no_wrap=True)
+                table.add_column("Значение", style="magenta")
+
+                table.add_row("Имя файла", os.path.basename(output_file))
+                table.add_row("Число частей", str(len(parts)))
+                table.add_row("Размер восстановленного файла", format_size(restored_file_size))
+                table.add_row("Контрольная сумма (MD5)", restored_md5)
+                table.add_row("Время выполнения", f"{end_time - start_time:.2f} секунд")
+
+                console.print(table)
+
+                # Сообщение о завершении
+                if restored_md5 == original_md5:
+                    console.print(f"\n[bold green]✔ Файл успешно восстановлен. Контрольная сумма совпадает.[/bold green]")
+                else:
+                    console.print(f"\n[bold red]✘ Контрольная сумма не совпадает. Файл может быть поврежден.[/bold red]")
+
+            else:
+                console.print(f"[yellow]Предупреждение: файл с контрольной суммой не найден.[/yellow]")
+
+        except Exception as e:
+            console.print(f"[red]Ошибка при восстановлении файла:[/red] {e}")
 
 @click.command()
 @click.option('--parts-dir', required=True, help='Путь к папке, содержащей части файла.')
 @click.option('--output-file', required=True, help='Путь для сохранения восстановленного файла.')
-@click.option('--encoding', type=click.Choice(['hex', 'base64'], case_sensitive=False), default='hex', help='Тип декодирования частей файла (hex или base64). По умолчанию hex.')
+@click.option('--encoding', type=click.Choice(['hex', 'base64', 'base85'], case_sensitive=False), default='base85', help='Тип декодирования частей файла (hex, base64, base85). По умолчанию base85.')
 def main(parts_dir, output_file, encoding):
     """
-    **Восстанавливает оригинальный файл из его частей и сохраняет в указанную папку.**
+    **Восстанавливает файл из частей и сверяет контрольные суммы.**
 
-    ### Пример использования:
-    1. Поместите все части файла в папку 'output_parts'.
-    2. Для восстановления файла выполните следующую команду:
-
-       `python3 merge_parts.py --parts-dir output_parts/ --output-file restored_file.avi --encoding base64`
-
-    После этого восстановленный файл будет сохранён как 'restored_file.avi'.
+    Пример использования:
+    ```
+    python3 merge_parts.py --parts-dir output/ --output-file restored_file.mp4 --encoding base85
+    ```
     """
-    # Выводим таблицу с параметрами
-    table = Table(title="Параметры восстановления файла")
-    table.add_column("Параметр", justify="right", style="cyan", no_wrap=True)
-    table.add_column("Значение", style="magenta")
-
-    table.add_row("Папка с частями", parts_dir)
-    table.add_row("Итоговый файл", output_file)
-    table.add_row("Кодирование", encoding)
-
-    console.print(table)
-
-    # Запуск основной функции для восстановления файла
     merge_file(parts_dir, output_file, encoding)
 
 if __name__ == '__main__':
