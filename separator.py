@@ -4,103 +4,165 @@
 
 import os
 import base64
+import hashlib
+import time
+import math
 import rich_click as click
 from rich.console import Console
+from rich.progress import Progress
 from rich.table import Table
 
-# Инициализация Rich для красивого вывода с принудительной активацией цвета
+# Инициализация Rich для красивого вывода
 console = Console(force_terminal=True, color_system="256")
+
+def calculate_md5(file_path):
+    """Вычисление контрольной суммы файла."""
+    md5_hash = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            md5_hash.update(byte_block)
+    return md5_hash.hexdigest()
+
+def calculate_total_size(directory):
+    """Подсчёт общего размера всех файлов в указанной директории."""
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for filename in filenames:
+            filepath = os.path.join(dirpath, filename)
+            total_size += os.path.getsize(filepath)
+    return total_size
+
+def format_size(size_bytes):
+    """Форматирует размер файла в человекочитаемый формат."""
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB", "TB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_name[i]}"
+
+def calculate_increase_percentage(original_size, new_size):
+    """Вычисляет процент увеличения размера частей по сравнению с оригинальным файлом."""
+    increase = ((new_size - original_size) / original_size) * 100
+    return round(increase, 2)
 
 def split_file(input_file, output_dir, chunk_size, encoding):
     """
     Разбивает файл на части заданного размера и сохраняет в указанную папку.
+    Также вычисляет контрольную сумму файла и размер частей.
 
     :param input_file: Путь к исходному файлу.
     :param output_dir: Папка для сохранения частей.
     :param chunk_size: Размер части в КБ.
-    :param encoding: Метод кодирования частей файла ('hex' или 'base64').
+    :param encoding: Метод кодирования частей файла ('hex', 'base64' или 'base85').
     """
-    # Проверяем, существует ли входной файл
     if not os.path.isfile(input_file):
         console.print(f"[red]Ошибка:[/red] Файл '{input_file}' не найден.")
         return
 
-    # Проверяем, существует ли выходная папка
+    # Создаем отдельную папку для частей в output/
+    base_file_name = os.path.basename(input_file).rsplit('.', 1)[0]
+    output_dir = os.path.join(output_dir, base_file_name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Определяем имя файла без расширения для именования частей
-    file_name = os.path.basename(input_file).rsplit('.', 1)[0]
-    
-    # Переводим размер части в байты
+    # Вычисляем контрольную сумму исходного файла
+    file_md5 = calculate_md5(input_file)
+
+    # Размер исходного файла
+    file_size = os.path.getsize(input_file)
     chunk_size_bytes = chunk_size * 1024
-    
-    try:
-        with open(input_file, 'rb') as file:
-            index = 1
-            while True:
-                chunk = file.read(chunk_size_bytes)
-                if not chunk:
-                    break
-                
-                # Определяем имя для части файла
-                chunk_file_name = os.path.join(output_dir, f"{file_name}_part_{index}.txt")
-                
-                # Кодирование данных в hex или base64
-                if encoding == 'hex':
-                    encoded_chunk = chunk.hex()
-                elif encoding == 'base64':
-                    encoded_chunk = base64.b64encode(chunk).decode('utf-8')
-                else:
-                    console.print(f"[red]Ошибка:[/red] Некорректный тип кодирования '{encoding}'.")
-                    return
-                
-                # Сохраняем закодированные данные в файл
-                with open(chunk_file_name, 'w') as chunk_file:
-                    chunk_file.write(encoded_chunk)
+    num_chunks = (file_size + chunk_size_bytes - 1) // chunk_size_bytes
 
-                console.print(f"[green]Сохранена часть {index} как {chunk_file_name}[/green]")
-                index += 1
+    # Прогресс-бар с переносом строки
+    with Progress() as progress:
+        console.print(f"\nРазбиение файла: {input_file} на части...\n")  # Добавляем перенос строки
+        task = progress.add_task(f"\n", total=num_chunks)
+        start_time = time.time()
 
-        console.print(f"[bold]Файл успешно разбит на {index - 1} частей.[/bold]")
-    
-    except Exception as e:
-        console.print(f"[red]Ошибка при обработке файла:[/red] {e}")
+        try:
+            with open(input_file, 'rb') as file:
+                index = 1
+                while True:
+                    chunk = file.read(chunk_size_bytes)
+                    if not chunk:
+                        break
 
-# Настройка rich-click для цветной справки
-click.rich_click.MAX_WIDTH = 100  # Ограничение ширины справки
-click.rich_click.USE_MARKDOWN = True  # Включение поддержки markdown в справке
+                    chunk_file_name = os.path.join(output_dir, f"{base_file_name}_part_{index}.txt")
+
+                    if encoding == 'hex':
+                        encoded_chunk = chunk.hex()
+                    elif encoding == 'base64':
+                        encoded_chunk = base64.b64encode(chunk).decode('utf-8')
+                    elif encoding == 'base85':
+                        encoded_chunk = base64.b85encode(chunk).decode('utf-8')
+                    else:
+                        console.print(f"[red]Ошибка:[/red] Некорректный тип кодирования '{encoding}'.")
+                        return
+
+                    with open(chunk_file_name, 'w') as chunk_file:
+                        chunk_file.write(encoded_chunk)
+
+                    index += 1
+                    progress.update(task, advance=1)
+
+            # Добавляем перенос строки перед выводом таблицы
+            console.print("\n")
+
+            # Сохраняем контрольную сумму в файл
+            with open(os.path.join(output_dir, "checksum.md5"), 'w') as checksum_file:
+                checksum_file.write(file_md5)
+
+            # Подсчёт общего размера всех частей
+            total_size_parts = calculate_total_size(output_dir)
+
+            # Вычисление процента увеличения размера
+            increase_percentage = calculate_increase_percentage(file_size, total_size_parts)
+
+            end_time = time.time()
+
+            # Отчетная таблица
+            #table = Table(title="Результат разбиения файла")
+            # Отчетная таблица с добавлением названия кодирования
+            table = Table(title=f"Результат разбиения файла ({encoding})")  # Добавляем название алгоритма кодирования в заголовок
+
+            table.add_column("Файл", justify="right", style="cyan", no_wrap=True)
+            table.add_column("Значение", style="magenta")
+
+            table.add_row("Имя файла", os.path.basename(input_file))
+            table.add_row("Размер исходного файла", format_size(file_size))
+            table.add_row("Число частей", str(index - 1))
+            table.add_row("Общий размер частей", format_size(total_size_parts))
+            table.add_row("Общий размер увеличился", f"на +{increase_percentage}% от оригинала")
+            table.add_row("Контрольная сумма (MD5)", file_md5)
+            table.add_row("Время выполнения", f"{end_time - start_time:.2f} секунд")
+
+            console.print(table)
+
+            # Сообщение о завершении
+            console.print(f"\n[bold green]✔ Файл успешно разбит на {index - 1} частей.[/bold green]")
+            console.print(f"[bold green]✔ Контрольная сумма сохранена.[/bold green]")
+
+        except Exception as e:
+            console.print(f"[red]Ошибка при обработке файла:[/red] {e}")
 
 @click.command()
-@click.option('--input', required=True, help='Путь к исходному файлу для разделения на части.')
-@click.option('--output', required=True, help='Путь к папке для сохранения частей.')
+@click.option('--input', 'input', required=True, help='Путь к исходному файлу для разделения на части.')
+@click.option('--output', 'output', required=True, help='Путь к папке для сохранения частей.')
 @click.option('--chunk-size', type=int, default=100, help='Размер каждой части в КБ (по умолчанию 100 КБ).')
-@click.option('--encoding', type=click.Choice(['hex', 'base64'], case_sensitive=False), default='hex', help='Тип кодирования частей файла (hex или base64). По умолчанию hex.')
+@click.option('--encoding', type=click.Choice(['hex', 'base64', 'base85'], case_sensitive=False), default='base85', help='Тип кодирования частей файла (hex, base64, base85). По умолчанию base85.')
 def main(input, output, chunk_size, encoding):
     """
     **Разбивает файл на части и сохраняет их в указанную папку.**
 
-    ### Пример использования:
-    1. Поместите файл, который хотите разбить, в папку 'input'.
-    2. Для разбиения файла '12345.avi' на части по 200 КБ выполните следующую команду:
+    В конце сохраняется контрольная сумма исходного файла.
 
-       `python3 separator.py --input input/12345.avi --output output/ --chunk-size 200 --encoding base64`
-
-    После этого куски файла будут сохранены в папку 'output/'.
+    Пример использования:
+    ```
+    python3 separator.py --input input/yourfile.mp4 --output output/ --chunk-size 200 --encoding base85
+    ```
     """
-    # Выводим таблицу с параметрами
-    table = Table(title="Параметры выполнения")
-    table.add_column("Параметр", justify="right", style="cyan", no_wrap=True)
-    table.add_column("Значение", style="magenta")
-
-    table.add_row("Входной файл", input)
-    table.add_row("Папка для сохранения", output)
-    table.add_row("Размер части (КБ)", str(chunk_size))
-    table.add_row("Кодирование", encoding)
-
-    console.print(table)
-
-    # Запуск основной функции для разбиения файла
     split_file(input, output, chunk_size, encoding)
 
 if __name__ == '__main__':
