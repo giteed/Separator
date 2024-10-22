@@ -17,8 +17,7 @@
 ### 1. Клонирование репозитория
 
 ```bash
-[git clone https://github.com/yourusername/pyChainLite.git](https://github.com/giteed/separator.git)
-cd pyChainLite
+git clone https://github.com/giteed/separator.git
 ```
 
 ### 2. Создание и активация виртуального окружения
