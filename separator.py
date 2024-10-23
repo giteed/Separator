@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-# Путь: pySeparator/separator.py
-# Описание: Скрипт для разбиения файлов на части определённого размера с возможностью кодирования данных (hex или base64) и сохранением этих частей в указанную папку.
-
 import os
 import base64
 import hashlib
@@ -125,7 +122,7 @@ def split_file(input_file, output_dir, chunk_size, encoding):
             # Отчетная таблица
             #table = Table(title="Результат разбиения файла")
             # Отчетная таблица с добавлением названия кодирования
-            table = Table(title=f"Результат разбиения файла ({encoding})")  # Добавляем название алгоритма кодирования в заголовок
+            table = Table(title=f"\nРезультат разбиения файла ({encoding})")  # Добавляем название алгоритма кодирования в заголовок
 
             table.add_column("Файл", justify="right", style="cyan", no_wrap=True)
             table.add_column("Значение", style="magenta")
