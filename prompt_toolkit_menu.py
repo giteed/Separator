@@ -47,7 +47,7 @@ def run_process(command, log_file):
             if "разделение завершено" in line.lower() or "восстановление завершено" in line.lower():
                 print(line.strip())
 
-    #clear_log(log_file)
+    clear_log(log_file)
 
 def split_file():
     """Команда для разрезания файла с заданными параметрами."""
