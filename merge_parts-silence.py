@@ -7,22 +7,14 @@ import logging
 import time
 
 # Логирование
-logging.basicConfig(filename="logs/merge_parts-silence.log", level=logging.INFO,  # Изменен уровень логирования на INFO
+logging.basicConfig(filename="logs/merge_parts-silence.log", level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
-logging.info("Программа запущена")
+logging.info("===========merge_parts-silence.py начал===========log %s==========", time.strftime('%Y-%m-%d %H:%M:%S'))
 
 def merge_file(metadata_file, output_dir):
     """Функция для восстановления файла из частей."""
     with open(metadata_file, "r") as f:
         metadata = json.load(f)
-
-    # Проверка на наличие всех необходимых параметров
-    required_keys = ['file_name', 'original_file_name', 'part_count', 'chunk_size', 'encoding', 'md5']
-    missing_keys = [key for key in required_keys if key not in metadata]
-
-    if missing_keys:
-        logging.error(f"Недостаточно данных в метаданных. Требуемые параметры отсутствуют: {', '.join(missing_keys)}")
-        return
 
     file_name = metadata['file_name']
     part_count = metadata['part_count']
@@ -31,10 +23,10 @@ def merge_file(metadata_file, output_dir):
     original_file_name = metadata['original_file_name']
     md5_hash = metadata['md5']
 
-    # Директория, где находятся части
     parts_dir = os.path.join(os.path.dirname(metadata_file), '../parts')
     output_path = os.path.join(output_dir, original_file_name)
 
+    logging.info(f"Общее количество частей: {part_count}")
     logging.info(f"Начало восстановления файла в: {output_path}")
 
     with open(output_path, "wb") as output_file:
@@ -58,25 +50,13 @@ def merge_file(metadata_file, output_dir):
                 else:
                     logging.error(f"Неизвестная кодировка: {encoding}")
                     return
-            # Убираем подробные DEBUG логи
+            logging.info(f"Часть {part_number}/{part_count} восстановлена.")
 
     logging.info(f"Файл успешно восстановлен: {output_path}")
-
-    # Создание нового файла метаданных для восстановленного файла
-    restored_metadata = {
-        "original_file_name": original_file_name,
-        "restored_file_name": original_file_name,
-        "restored_size": os.path.getsize(output_path),
-        "restored_md5": md5_hash,
-        "part_count": part_count,
-        "chunk_size": chunk_size,
-        "encoding": encoding,
-        "restored_date": time.strftime('%Y-%m-%dT%H:%M:%S')
-    }
-
+    
     restored_metadata_path = os.path.join(output_dir, f"{md5_hash[:5]}_restored_{original_file_name}.json")
     with open(restored_metadata_path, "w") as metadata_out:
-        json.dump(restored_metadata, metadata_out)
+        json.dump(metadata, metadata_out)
 
     logging.info(f"Метаданные восстановленного файла сохранены: {restored_metadata_path}")
 
@@ -88,3 +68,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     merge_file(args.metadata, args.output)
+
+    logging.info("===========merge_parts-silence.py завершен===========log %s==========", time.strftime('%Y-%m-%d %H:%M:%S'))
