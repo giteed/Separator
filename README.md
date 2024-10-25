@@ -162,13 +162,13 @@ python3 separator.py --input 'input/sample_file.mp4' --output output/ --chunk-si
 
 ---
 
-### структура проекта `pyChainLite` и список файлов:
+### структура основных папок и список файлов:
 
 ```
 pyChainLite/
 │
 ├── input/                            # Папка для входных файлов, которые нужно разрезать
-│   └── example_file.safetensors       # Пример входного файла
+│   └── example_file.safetensors      # Пример входного файла
 │
 ├── output/                           # Папка для хранения разрезанных частей и метаданных
 │   └── parts/                        # Подпапка для частей файлов
