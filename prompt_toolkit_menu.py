@@ -51,11 +51,10 @@ def run_process(command, log_file):
 
 def split_file():
     """Команда для разрезания файла с заданными параметрами."""
-    print("\n*** Справка по навигации ***")
-    print("• Нажмите [Tab] для выбора папки или файла.")
-    print("• Используйте [стрелки] для перемещения по списку.")
+    print("\n*** Справка по навигации для выбора JSON файла ***")
+    print("• Стрелки и [Tab] для для перемещения.")
     print("• Нажмите [/] для фиксации папки и отображения её содержимого.")
-    print("• После выбора файла нажмите [Enter].")
+    print("• После выбора файла нажмите [Enter].\n")
     print("• Нажмите [Ctrl+C] для выхода в любой момент.\n")
 
     file_completer = PathCompleter()
@@ -73,10 +72,10 @@ def split_file():
 def merge_file():
     """Команда для восстановления файла из частей."""
     print("\n*** Справка по навигации для выбора JSON файла ***")
-    print("• Нажмите [Tab] для выбора папки или файла.")
-    print("• Используйте [стрелки] для перемещения.")
+    print("• Стрелки и [Tab] для для перемещения.")
     print("• Нажмите [/] для фиксации папки и отображения её содержимого.")
     print("• После выбора файла нажмите [Enter].\n")
+    print("• Нажмите [Ctrl+C] для выхода в любой момент.\n")
 
     file_completer = PathCompleter()
     metadata_path = prompt("Введите путь к файлу с метаданными (JSON): ", completer=file_completer, default="output/")
@@ -96,6 +95,7 @@ def main_menu():
     
     while True:
         choices = [
+            
             ("Разбить файл на части", split_file),
             ("Восстановить файл из частей", merge_file),
             ("Выход", lambda: exit())
@@ -109,6 +109,8 @@ def main_menu():
                 "• [Tab] и стрелки для перемещения.\n"
                 "• Нажмите [Enter] для выбора и подтвердите Ok.\n"
                 "• Поддержка мыши доступна.\n"
+                "   \nCoding method:  hex, base64, base85"
+                
             ),
             values=[(str(i), option[0]) for i, option in enumerate(choices)]
         ).run()
@@ -124,4 +126,3 @@ if __name__ == "__main__":
         main_menu()
     except KeyboardInterrupt:
         print("\nПрограмма прервана пользователем. Завершение...")
-
