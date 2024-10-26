@@ -7,7 +7,7 @@ from prompt_toolkit import prompt
 from prompt_toolkit.shortcuts import checkboxlist_dialog, message_dialog
 from prompt_toolkit.completion import PathCompleter, WordCompleter
 from modules.progress_tracker import track_progress
-from gpt_logger import setup_logger, log_start_process, log_end_process, log_file_info, log_success, log_error
+from modules.gpt_logger import setup_logger, log_start_process, log_end_process, log_file_info, log_success, log_error
 
 # Создание директории для логов, если её нет
 os.makedirs("logs", exist_ok=True)
