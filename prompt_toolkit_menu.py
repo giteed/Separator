@@ -9,9 +9,6 @@ from prompt_toolkit.completion import PathCompleter, WordCompleter
 from modules.progress_tracker import track_progress
 from modules.gpt_logger import setup_logger, log_start_process, log_end_process, log_file_info, log_success, log_error
 
-# Создание директории для логов, если её нет
-os.makedirs("logs", exist_ok=True)
-
 # Настройка логирования
 setup_logger()
 logging.basicConfig(filename="logs/prompt_toolkit_menu.log", level=logging.DEBUG, 
@@ -84,7 +81,7 @@ def merge_file():
     metadata_path = prompt("Введите путь к файлу с метаданными (JSON): ", completer=file_completer, default="output/")
     
     output_completer = PathCompleter()
-    output_dir = prompt("Введите путь для сохранения восстановленного файла: ", completer=output_completer, default="output_merged/")
+    output_dir = prompt("Введите путь для сохранения (укажите папку - не файл) восстановленного файла: ", completer=output_completer, default="output_merged/")
 
     logging.info(f"Запуск восстановления файла: {metadata_path}")
     log_file = "logs/merge_parts-silence.log"
@@ -98,6 +95,7 @@ def main_menu():
     
     while True:
         choices = [
+            
             ("Разбить файл на части", split_file),
             ("Восстановить файл из частей", merge_file),
             ("Выход", lambda: exit())
@@ -112,6 +110,7 @@ def main_menu():
                 "• Нажмите [Enter] для выбора и подтвердите Ok.\n"
                 "• Поддержка мыши доступна.\n"
                 "   \nCoding method:  hex, base64, base85"
+                
             ),
             values=[(str(i), option[0]) for i, option in enumerate(choices)]
         ).run()
@@ -127,3 +126,5 @@ if __name__ == "__main__":
         main_menu()
     except KeyboardInterrupt:
         print("\nПрограмма прервана пользователем. Завершение...")
+
+## 100% рабочий код 57754
