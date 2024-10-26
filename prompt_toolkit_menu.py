@@ -9,6 +9,9 @@ from prompt_toolkit.completion import PathCompleter, WordCompleter
 from modules.progress_tracker import track_progress
 from gpt_logger import setup_logger, log_start_process, log_end_process, log_file_info, log_success, log_error
 
+# Создание директории для логов, если её нет
+os.makedirs("logs", exist_ok=True)
+
 # Настройка логирования
 setup_logger()
 logging.basicConfig(filename="logs/prompt_toolkit_menu.log", level=logging.DEBUG, 
@@ -95,7 +98,6 @@ def main_menu():
     
     while True:
         choices = [
-            
             ("Разбить файл на части", split_file),
             ("Восстановить файл из частей", merge_file),
             ("Выход", lambda: exit())
@@ -110,7 +112,6 @@ def main_menu():
                 "• Нажмите [Enter] для выбора и подтвердите Ok.\n"
                 "• Поддержка мыши доступна.\n"
                 "   \nCoding method:  hex, base64, base85"
-                
             ),
             values=[(str(i), option[0]) for i, option in enumerate(choices)]
         ).run()
