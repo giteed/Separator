@@ -36,20 +36,40 @@
 
 ### 1. Клонирование репозитория
 
+Сначала склонируйте репозиторий:
+
 ```bash
 git clone https://github.com/giteed/separator.git
 ```
 
+Затем перейдите в папку проекта:
+
+```bash
+cd separator
+```
+
 ### 2. Создание и активация виртуального окружения
+
+Создайте виртуальное окружение **внутри папки проекта** для изоляции зависимостей:
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate
 ```
+
+Активируйте виртуальное окружение:
+
+- **Linux/macOS**: 
+  ```bash
+  source venv/bin/activate
+  ```
+- **Windows**:
+  ```powershell
+  .\venv\Scripts\activate
+  ```
 
 ### 3. Установка зависимостей
 
-Установите зависимости из файла `requirements.txt`:
+После активации виртуального окружения установите зависимости, указанные в `requirements.txt`:
 
 ```bash
 pip install -r requirements.txt
