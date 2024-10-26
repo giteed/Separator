@@ -9,6 +9,10 @@ from prompt_toolkit.completion import PathCompleter, WordCompleter
 from modules.progress_tracker import track_progress
 from modules.gpt_logger import setup_logger, log_start_process, log_end_process, log_file_info, log_success, log_error
 
+# Создаем директорию logs, если она не существует
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
 # Настройка логирования
 setup_logger()
 logging.basicConfig(filename="logs/prompt_toolkit_menu.log", level=logging.DEBUG, 
