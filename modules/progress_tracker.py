@@ -1,7 +1,8 @@
-#  progress_tracker.py
+# progress_tracker.py
 import time
 import re
-from gpt_logger import log_error, log_success
+from modules.gpt_logger import log_error, log_success
+
 
 def track_progress(log_file, total_parts=None):
     """
