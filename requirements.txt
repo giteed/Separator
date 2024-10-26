@@ -1,5 +1,5 @@
 # requirements.txt
-python>=3.11
+# python>=3.11
 
 # Убедитесь, что pip обновлён до последней версии
 # pip install --upgrade pip
